@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: latest_stock_prices
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+          - unique
+
+  - name: latest_crypto_prices
+    columns:
+      - name: coin
+        tests:
+          - not_null
+          - unique
