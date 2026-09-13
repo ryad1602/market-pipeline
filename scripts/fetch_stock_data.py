@@ -2,6 +2,7 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime, timezone
 from db import get_engine
+from kafka_producer import get_producer, publish_stock_prices
 
 TICKERS = [
     "AAPL", "MSFT", "GOOGL", "NVDA", "META", "AMZN",
@@ -35,3 +36,6 @@ def save_to_db(df: pd.DataFrame, table_name: str = "raw_stock_prices"):
 if __name__ == "__main__":
     df = fetch_stock_data(TICKERS)
     save_to_db(df)
+    
+    producer = get_producer()
+    publish_stock_prices(df, producer)
