@@ -1,11 +1,11 @@
 SELECT
-    "Date" AS price_date,
+    price_date,
     ticker,
-    "Open" AS open_price,
-    "High" AS high_price,
-    "Low" AS low_price,
-    "Close" AS close_price,
-    "Volume" AS volume,
+    open_price,
+    high_price,
+    low_price,
+    close_price,
+    volume,
     fetched_at
 FROM {{ source('raw', 'raw_stock_prices') }}
-WHERE "Close" IS NOT NULL
+WHERE close_price IS NOT NULL
