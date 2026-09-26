@@ -142,7 +142,6 @@ def save_to_db(df: pd.DataFrame, table_name: str = "raw_stock_prices"):
     print(f"{len(valid_records)} lignes upsertées, {len(invalid_records)} en quarantaine dans '{table_name}'")
 
 if __name__ == "__main__":
-    raise Exception("Test volontaire pour vérifier les alertes email")
     df = fetch_stock_data(TICKERS)
     save_to_db(df)
     
