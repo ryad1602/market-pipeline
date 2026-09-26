@@ -6,3 +6,4 @@ sources:
     tables:
       - name: raw_stock_prices
       - name: raw_crypto_prices
+      - name: ticker_sectors
