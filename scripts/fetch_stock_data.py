@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime, timezone
 import sqlalchemy
 from db import get_engine
-from kafka_producer import get_producer, publish_stock_prices
 from validation import validate_records
 
 TICKERS = [
@@ -146,5 +145,4 @@ if __name__ == "__main__":
     df = fetch_stock_data(TICKERS)
     save_to_db(df)
     
-    producer = get_producer()
-    publish_stock_prices(df, producer)
+  
