@@ -124,9 +124,9 @@ services:
     image: postgres:16
     container_name: market-db
     environment:
-      POSTGRES_USER: ryad
-      POSTGRES_PASSWORD: ryad
-      POSTGRES_DB: market_data
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:

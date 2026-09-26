@@ -1,0 +1,22 @@
+#!/bin/bash
+# Blocks commits that stage .env files or obvious secret patterns (AWS keys, etc.)
+set -e
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+
+for f in $staged; do
+  base=$(basename "$f")
+  if [[ "$base" == ".env" || "$base" == *.env ]] && [[ "$base" != *.env.example ]]; then
+    echo "ERROR: refusing to commit '$f' — looks like a real .env file, not a template." >&2
+    exit 1
+  fi
+done
+
+if [ -n "$staged" ]; then
+  if git diff --cached -- $staged | grep -EqI 'AKIA[0-9A-Z]{16}|-----BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY-----'; then
+    echo "ERROR: a staged change matches an AWS access key ID or private key pattern. Aborting commit." >&2
+    exit 1
+  fi
+fi
+
+exit 0
