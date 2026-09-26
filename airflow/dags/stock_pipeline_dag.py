@@ -11,6 +11,8 @@ default_args = {
     "owner": "ryad",
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
+    "email": ["ryadmessaoudi06@gmail.com"],
+    "email_on_failure": True,
 }
 
 def run_pipeline():
