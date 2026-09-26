@@ -35,7 +35,7 @@ def get_dlq_producer():
     )
 
 def ensure_table_exists(engine):
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS raw_crypto_trades (
                 symbol TEXT NOT NULL,
@@ -46,10 +46,10 @@ def ensure_table_exists(engine):
                 PRIMARY KEY (symbol, trade_time)
             )
         """))
-        conn.commit()
+        
 
 def save_trade(engine, data):
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(
             text("""
                 INSERT INTO raw_crypto_trades (symbol, price, quantity, trade_time, received_at)
@@ -58,7 +58,7 @@ def save_trade(engine, data):
             """),
             data
         )
-        conn.commit()
+        
 
 if __name__ == "__main__":
     engine = get_engine()

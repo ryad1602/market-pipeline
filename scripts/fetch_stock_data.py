@@ -1,4 +1,5 @@
 import yfinance as yf
+import json
 import pandas as pd
 from datetime import datetime, timezone
 import sqlalchemy
@@ -53,7 +54,7 @@ def fetch_stock_data(tickers: list[str], period: str = "1d") -> pd.DataFrame:
     return pd.concat(all_data)
 
 def ensure_table_exists(engine):
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(sqlalchemy.text("""
             CREATE TABLE IF NOT EXISTS raw_stock_prices (
                 price_date DATE NOT NULL,
@@ -67,10 +68,10 @@ def ensure_table_exists(engine):
                 PRIMARY KEY (ticker, price_date)
             )
         """))
-        conn.commit()
+        
 
 def ensure_quarantine_table_exists(engine):
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(sqlalchemy.text("""
             CREATE TABLE IF NOT EXISTS quarantine_stock_prices (
                 id SERIAL PRIMARY KEY,
@@ -79,7 +80,7 @@ def ensure_quarantine_table_exists(engine):
                 quarantined_at TIMESTAMPTZ
             )
         """))
-        conn.commit()
+        
 
 def save_to_db(df: pd.DataFrame, table_name: str = "raw_stock_prices"):
     if df.empty:
@@ -104,7 +105,7 @@ def save_to_db(df: pd.DataFrame, table_name: str = "raw_stock_prices"):
 
     valid_records, invalid_records = validate_records(records)
 
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         for record in valid_records:
             conn.execute(
                 sqlalchemy.text("""
@@ -137,7 +138,7 @@ def save_to_db(df: pd.DataFrame, table_name: str = "raw_stock_prices"):
                     "quarantined_at": datetime.now(timezone.utc),
                 }
             )
-        conn.commit()
+        
 
     print(f"{len(valid_records)} lignes upsertées, {len(invalid_records)} en quarantaine dans '{table_name}'")
 
