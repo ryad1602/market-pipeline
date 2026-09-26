@@ -37,6 +37,7 @@ def on_message(ws, message):
 
     symbol = trade["s"]  # ex: "BTCUSDT"
     record = {
+        "schema_version": 1,
         "symbol": symbol,
         "price": float(trade["p"]),
         "quantity": float(trade["q"]),
