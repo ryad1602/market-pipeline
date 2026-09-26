@@ -14,3 +14,19 @@ models:
         tests:
           - not_null
           - unique
+
+  - name: fct_stock_prices
+    columns:
+      - name: close_price
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              strictly: true
+      - name: ticker
+        tests:
+          - not_null
+      - name: variation_pct
+        tests:
+          - variation_raisonnable:
+              seuil_pct: 30
