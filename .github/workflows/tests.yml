@@ -48,3 +48,16 @@ jobs:
           context: ./airflow
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/market-pipeline-airflow:latest
+    security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan des secrets avec gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
