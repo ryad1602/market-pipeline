@@ -26,7 +26,8 @@ jobs:
       - name: Lancer les tests
         run: |
           pytest tests/ -v
-    build-and-push:
+
+  build-and-push:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -48,7 +49,8 @@ jobs:
           context: ./airflow
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/market-pipeline-airflow:latest
-    security-scan:
+
+  security-scan:
     runs-on: ubuntu-latest
 
     steps:
