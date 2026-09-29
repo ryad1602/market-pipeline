@@ -2,6 +2,7 @@ import yfinance as yf
 import json
 import pandas as pd
 from datetime import datetime, timezone
+from monitoring import track_pipeline_run
 import sqlalchemy
 from db import get_engine
 from validation import validate_records
@@ -141,9 +142,46 @@ def save_to_db(df: pd.DataFrame, table_name: str = "raw_stock_prices"):
         
 
     print(f"{len(valid_records)} lignes upsertées, {len(invalid_records)} en quarantaine dans '{table_name}'")
+@track_pipeline_run("stock_pipeline")
+def fetch_stock_data(tickers: list[str], period: str = "1d") -> int:
+    """
+    Récupère les données de marché et les enregistre en base.
+    Retourne le nombre de lignes traitées.
+    """
+    raw = yf.download(
+        tickers,
+        period=period,
+        group_by="ticker",
+        auto_adjust=False,
+        progress=False,
+    )
+
+    all_data = []
+    for ticker in tickers:
+        if raw.empty:
+            continue
+        if isinstance(raw.columns, pd.MultiIndex):
+            if ticker not in raw.columns.get_level_values(0):
+                continue
+            df_ticker = raw[ticker].copy()
+        elif len(tickers) == 1:
+            df_ticker = raw.copy()
+        else:
+            continue
+        if df_ticker.empty:
+            continue
+        df_ticker["ticker"] = ticker
+        df_ticker["fetched_at"] = datetime.now(timezone.utc)
+        all_data.append(df_ticker)
+
+    if not all_data:
+        return 0
+
+    df = pd.concat(all_data)
+    save_to_db(df)
+    return len(df)
 
 if __name__ == "__main__":
-    df = fetch_stock_data(TICKERS)
-    save_to_db(df)
+    fetch_stock_data(TICKERS)
     
   
