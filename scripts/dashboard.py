@@ -1,6 +1,6 @@
-import streamlit as st
 import pandas as pd
 import plotly.express as px
+import streamlit as st
 from db import get_engine
 
 st.set_page_config(page_title="Market Pipeline Dashboard", layout="wide")

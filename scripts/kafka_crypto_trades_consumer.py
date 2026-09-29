@@ -1,10 +1,13 @@
 import json
 import os
 from datetime import datetime, timezone
-from kafka import KafkaConsumer, KafkaProducer
-from pydantic import BaseModel, ValidationError
+
 from db import get_engine
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import text
+
+from kafka import KafkaConsumer, KafkaProducer
+
 
 class TradeMessage(BaseModel):
     """Définit la forme attendue d'un message de trade, version 1."""

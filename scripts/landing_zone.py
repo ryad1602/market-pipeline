@@ -1,8 +1,10 @@
 import os
+from datetime import datetime, timezone
+
 import boto3
 import pandas as pd
-from datetime import datetime, timezone
 from db import get_engine
+
 
 def get_s3_client():
     return boto3.client(

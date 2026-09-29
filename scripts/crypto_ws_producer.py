@@ -1,7 +1,9 @@
 import json
 import os
-import websocket
 from datetime import datetime, timezone
+
+import websocket
+
 from kafka import KafkaProducer
 
 # Correspondance entre nos noms (CoinGecko) et les symboles Binance

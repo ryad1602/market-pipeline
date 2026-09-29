@@ -26,3 +26,25 @@ jobs:
       - name: Lancer les tests
         run: |
           pytest tests/ -v
+    build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Connexion à GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build et push de l'image Airflow
+        uses: docker/build-push-action@v5
+        with:
+          context: ./airflow
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/market-pipeline-airflow:latest

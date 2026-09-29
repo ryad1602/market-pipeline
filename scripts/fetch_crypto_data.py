@@ -1,7 +1,8 @@
-import requests
-import pandas as pd
 import time
 from datetime import datetime, timezone
+
+import pandas as pd
+import requests
 from db import get_engine
 from monitoring import track_pipeline_run
 

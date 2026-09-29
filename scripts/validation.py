@@ -1,6 +1,8 @@
-from pydantic import BaseModel, field_validator
 from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel, field_validator
+
 
 class StockPriceRecord(BaseModel):
     """
@@ -31,7 +33,7 @@ def validate_records(records: list[dict]) -> tuple[list[dict], list[dict]]:
     valid, invalid = [], []
     for record in records:
         try:
-            validated = StockPriceRecord(**record)
+            StockPriceRecord(**record)
             valid.append(record)
         except Exception as e:
             invalid.append({**record, "validation_error": str(e)})

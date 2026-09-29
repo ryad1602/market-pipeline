@@ -1,5 +1,7 @@
-from kafka import KafkaConsumer, TopicPartition
 import os
+
+from kafka import KafkaConsumer, TopicPartition
+
 
 def check_lag(topic="crypto-trades", group_id="crypto-trades-consumer-group"):
     bootstrap_server = os.getenv("KAFKA_BOOTSTRAP_SERVER", "localhost:9092")

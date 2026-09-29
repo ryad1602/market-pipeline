@@ -1,10 +1,10 @@
-import sys
 import os
-import pandas as pd
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 from fetch_stock_data import TICKERS
+
 
 def test_tickers_list_not_empty():
     assert len(TICKERS) > 0

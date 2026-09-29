@@ -1,8 +1,10 @@
 import time
-import sqlalchemy
-from functools import wraps
 from datetime import datetime, timezone
+from functools import wraps
+
+import sqlalchemy
 from db import get_engine
+
 
 def ensure_monitoring_table_exists(engine):
     with engine.begin() as conn:
@@ -37,7 +39,7 @@ def track_pipeline_run(pipeline_name):
 
             try:
                 rows_processed = func(*args, **kwargs) or 0
-            except Exception as e:
+            except Exception:
                 status = "failed"
                 raise
             finally:
