@@ -1,76 +1,64 @@
-# market-pipeline
+# Market Pipeline
 
-Pipeline de données actions + crypto : ingestion, streaming, stockage, transformation et exposition, orchestré par Airflow.
+Plateforme d'ingestion hybride streaming + batch de données de marché, modélisée en entrepôt avec dbt, testée, monitorée et déployée en CI/CD.
+
+**[Démo en ligne](https://market-pipeline-ymwfbhto7opmmukfqwdj6h.streamlit.app/)** — dashboard connecté à une base PostgreSQL hébergée (Neon), synchronisée périodiquement depuis le pipeline principal.
 
 ## Architecture
 
-- **Ingestion actions** : [scripts/fetch_stock_data.py](scripts/fetch_stock_data.py) (yfinance) → validation ([scripts/validation.py](scripts/validation.py)) → PostgreSQL, orchestré par le DAG `stock_pipeline`.
-- **Ingestion crypto** : [scripts/fetch_crypto_data.py](scripts/fetch_crypto_data.py) (REST, DAG `crypto_pipeline`) et [scripts/crypto_ws_producer.py](scripts/crypto_ws_producer.py) → Kafka → [scripts/kafka_crypto_trades_consumer.py](scripts/kafka_crypto_trades_consumer.py) (streaming temps réel, process autonome hors Airflow).
-- **Transformation** : dbt ([dbt/market_pipeline_dbt/](dbt/market_pipeline_dbt/)), orchestré par le DAG `dbt_pipeline` via astronomer-cosmos.
-- **Export / archivage** : [scripts/landing_zone.py](scripts/landing_zone.py) (Parquet sur S3, DAG `landing_zone_export`) et [scripts/export_to_s3.py](scripts/export_to_s3.py) (backup, DAG `s3_backup`).
-- **Visualisation** : [scripts/dashboard.py](scripts/dashboard.py) (Streamlit, process autonome).
+WebSocket Binance --> Kafka --> Consumer Python --> PostgreSQL
+API yfinance --> Airflow batch --> PostgreSQL
 
-## Setup
+PostgreSQL --> dbt (staging vers marts) --> Dashboard Streamlit + S3 Parquet
 
-1. Copier les fichiers d'environnement et remplir les vraies valeurs :
-   ```
-   cp .env.example .env
-   cp airflow/.env.example airflow/.env
-   ```
-2. Activer le hook Git anti-fuite de secrets (une fois par clone, voir [Sécurité](#sécurité)) :
-   ```
-   git config core.hooksPath .githooks
-   ```
-3. Environnement Python local (pour lancer les scripts manuellement / tests) :
-   ```
-   python -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
+Deux voies d'ingestion alimentent le même entrepôt :
+- Streaming (crypto) : connexion WebSocket permanente a Binance, chaque transaction traitée dès son arrivée
+- Batch (actions) : Airflow interroge l'API yfinance toutes les 15 minutes
 
-## Lancer l'infrastructure
+## Stack technique
 
-```
-docker compose -f airflow/docker-compose.yaml up -d      # Airflow + market-db
-docker compose -f kafka/docker-compose.yaml up -d         # Kafka
-```
+| Domaine | Outils |
+|---|---|
+| Orchestration | Apache Airflow (CeleryExecutor), Cosmos pour dbt |
+| Streaming | Apache Kafka (mode KRaft) |
+| Transformation | dbt (staging vers marts, snapshots SCD2, tests) |
+| Stockage | PostgreSQL, AWS S3 (Parquet partitionné) |
+| Visualisation | Streamlit |
+| CI/CD | GitHub Actions, ruff, pre-commit, gitleaks |
+| Conteneurisation | Docker, Docker Compose |
 
-Airflow UI : http://localhost:8080 (identifiants par défaut `airflow` / `airflow`).
+## Choix techniques
 
-## Lancer les process manuels (hors Airflow)
+- Idempotence partout : upsert (ON CONFLICT ... DO UPDATE) sur les tables batch, ON CONFLICT ... DO NOTHING sur les trades crypto - relancer le pipeline ne crée jamais de doublon
+- Validation des données : chaque ligne est validée avec Pydantic avant insertion ; les lignes invalides partent dans une table de quarantaine plutôt que de polluer les données brutes
+- Modélisation dbt en couches : staging (nettoyage) vers marts (dernier état + faits incrémentaux avec window functions) ; dimension ticker_sectors historisée en SCD type 2 via un snapshot dbt
+- Tests de qualité : not_null, unique, tests de plage de valeurs (dbt-expectations), test maison de détection de variations aberrantes (plus de 30% en une journée)
+- Monitoring : chaque exécution de pipeline est tracée (durée, lignes traitées, statut) via un décorateur Python ; une page dédiée dans le dashboard affiche la fraîcheur des données par source
+- Alertes : email automatique en cas d'échec d'un DAG
 
-Ces scripts ne sont pas déclenchés par un DAG ; ce sont des process longue durée à lancer soi-même, dans le venv local :
+## Chiffres
 
-```
-python scripts/crypto_ws_producer.py            # producteur Kafka (WebSocket crypto)
-python scripts/kafka_crypto_trades_consumer.py   # consommateur Kafka -> PostgreSQL
-python scripts/check_kafka_lag.py                # supervision du lag de consommation
-streamlit run scripts/dashboard.py               # dashboard de visualisation
-```
+- 20 actions suivies (secteurs tech, finance, santé, énergie, industrie, consommation)
+- 10 cryptomonnaies suivies
+- Collecte batch toutes les 15 minutes, streaming crypto en continu
+- 40 lignes en base pour les prix actions, 2912 trades crypto capturés en streaming
 
-## dbt
+## Limites connues
 
-```
-cd dbt/market_pipeline_dbt
-dbt run
-dbt test
-```
+- Le pipeline local dépend de la disponibilité de la machine hôte (pas de serveur 24/7) - la démo en ligne reste accessible en continu grâce à la synchronisation vers Neon
+- L'historique actuel couvre quelques semaines, pas encore un an complet
+- Kubernetes a été exploré puis abandonné (Minikube) - jugé non pertinent pour un poste Data Engineer junior par rapport à la maîtrise de Kafka/Airflow/dbt
 
-Toujours lancer les commandes dbt depuis `dbt/market_pipeline_dbt/` — les lancer depuis la racine du repo génère des fichiers `packages.yml` / `snapshots/` / `logs/` parasites à la racine (déjà arrivé, nettoyé).
+## Lancer le projet en local
+
+git clone https://github.com/ryad1602/market-pipeline.git
+cd market-pipeline
+cp .env.example .env
+make up
+
+Interface Airflow : http://localhost:8080 (airflow/airflow)
+Dashboard local : streamlit run scripts/dashboard.py
 
 ## Tests
 
-```
-pytest
-```
-
-CI GitHub Actions : [.github/workflows/tests.yml](.github/workflows/tests.yml).
-
-## Sécurité
-
-- `.env` et `airflow/.env` contiennent de vraies clés (AWS, Gmail) et ne sont **jamais** committés (voir [.gitignore](.gitignore)). Utiliser les fichiers `.env.example` comme référence pour créer les siens.
-- Un hook pre-commit ([.githooks/pre-commit](.githooks/pre-commit)) bloque tout commit qui contiendrait un fichier `.env` réel ou un motif de clé AWS/clé privée. Il n'est pas actif par défaut sur un nouveau clone : lancer `git config core.hooksPath .githooks` une fois après avoir cloné le repo.
-- Si une clé a pu fuiter (partagée, affichée dans un terminal partagé, etc.), la faire tourner immédiatement :
-  - **AWS** : IAM Console → Users → Security credentials → désactiver puis supprimer l'access key exposée, en créer une nouvelle, mettre à jour `.env` et `airflow/.env`.
-  - **Gmail (mot de passe d'application)** : compte Google → Sécurité → Mots de passe des applications → révoquer l'ancien, en générer un nouveau.
-- Le mot de passe PostgreSQL de `market-db` est piloté par `${DB_USER}` / `${DB_PASSWORD}` dans `airflow/docker-compose.yaml` (lu depuis `airflow/.env`), pas en dur.
+make test
