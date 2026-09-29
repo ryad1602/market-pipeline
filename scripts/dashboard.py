@@ -16,7 +16,7 @@ def load_stocks():
 def load_crypto():
     return pd.read_sql("SELECT * FROM latest_crypto_prices ORDER BY coin", engine)
 
-tab1, tab2 = st.tabs(["Actions", "Crypto"])
+tab1, tab2, tab3 = st.tabs(["Actions", "Crypto", "Santé du pipeline"])
 
 with tab1:
     df_stocks = load_stocks()
@@ -41,3 +41,41 @@ with tab2:
         color_continuous_scale=["red", "green"],
     )
     st.plotly_chart(fig3, use_container_width=True)
+
+with tab3:
+    st.subheader("Santé du pipeline")
+
+    @st.cache_data(ttl=30)
+    def load_pipeline_runs():
+        return pd.read_sql(
+            "SELECT * FROM pipeline_runs ORDER BY started_at DESC LIMIT 20",
+            engine
+        )
+
+    @st.cache_data(ttl=30)
+    def load_freshness():
+        return pd.read_sql("""
+            SELECT 'Actions' AS source, MAX(fetched_at) AS derniere_maj
+            FROM raw_stock_prices
+            UNION ALL
+            SELECT 'Crypto' AS source, MAX(fetched_at) AS derniere_maj
+            FROM raw_crypto_prices
+        """, engine)
+
+    freshness = load_freshness()
+    freshness["minutes_depuis_maj"] = (
+        pd.Timestamp.now(tz="UTC") - freshness["derniere_maj"]
+    ).dt.total_seconds() / 60
+
+    col1, col2 = st.columns(2)
+    for i, row in freshness.iterrows():
+        col = col1 if i == 0 else col2
+        alerte = "🔴" if row["minutes_depuis_maj"] > 30 else "🟢"
+        col.metric(
+            label=f"{alerte} {row['source']} — dernière mise à jour",
+            value=f"{row['minutes_depuis_maj']:.0f} min",
+        )
+
+    st.subheader("Derniers runs")
+    runs = load_pipeline_runs()
+    st.dataframe(runs, use_container_width=True)
